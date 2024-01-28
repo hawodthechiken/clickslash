@@ -1,0 +1,249 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+#include <ctype.h> // Include ctype.h for character type checking
+
+// function prototypes
+void klassmenu(char name[]);
+void klassinfo();
+void battle(int* playerhp, int playerklass, int enemyklass, char playername[]);
+void generateRandomName(char randomname[]);
+int generateRandomClass();
+void hpassigner(int* playerhp, int playerklass); 
+
+int main() {
+    char playerOneName[50], playerTwoName[50];
+    int playerOneClass, playerTwoClass;
+    int ready = 1;
+    int diceRoll;
+    int gameMode;
+    int roundCount = 1;
+    int playerOneHP, playerTwoHP;
+    srand(time(NULL));
+    
+    // start menu 
+    printf("    ~ Welcome to click/slash! ~\n\n");
+
+    printf("   - For single-player, press 1 -\n- For player versus player, press 2 -\n");
+    scanf("%d", &gameMode);
+    
+    // player 1 setup
+    printf("Type in player one's name\n");
+    scanf("%s", playerOneName);
+
+    //player 1 class
+    do {
+        klassmenu(playerOneName);
+        if (scanf("%d", &playerOneClass) != 1) { // Check if input is not a number
+            printf("Invalid input. Please enter a number.\n");
+            while (getchar() != '\n'); // Clear input buffer
+        } else if (playerOneClass == 4) {
+            klassinfo();
+        } else if (playerOneClass < 1 || playerOneClass > 3) {
+            printf("Invalid option. Please select a class between 1 and 3.\n");
+        } else {
+            break;
+        }
+    } while (1);
+
+    // player 2 setup
+    if (gameMode == 2) {
+        printf("Type in player two's name\n");
+        scanf("%s", playerTwoName);
+
+        //player 2 class
+        do {
+            klassmenu(playerTwoName);
+            if (scanf("%d", &playerTwoClass) != 1) { // Check if input is not a number
+                printf("Invalid input. Please enter a number.\n");
+                while (getchar() != '\n'); // Clear input buffer
+            } else if (playerTwoClass == 4) {
+                klassinfo();
+            } else if (playerTwoClass < 1 || playerTwoClass > 3) {
+                printf("Invalid option. Please select a class between 1 and 3.\n");
+            } else {
+                break;
+            }
+        } while (1);
+    } else {
+        // random name generation for player two if the player choose single player
+        generateRandomName(playerTwoName);
+        printf("Your nemesis is %s the ", playerTwoName); 
+
+        // random class assignment for player two if the player choose single player
+        playerTwoClass = generateRandomClass();
+
+        switch (playerTwoClass) {
+            case 1: // ninja
+               printf("ninja \n");
+               break;
+            case 2: // mage
+              printf("mage \n");
+              break;
+            case 3: // barbarian
+                printf("barbarian\n");
+                break;
+        }
+    }
+
+    printf("%s and %s, are you ready?\n", playerOneName, playerTwoName);
+    printf("Press 1 to start\nPress 2 to exit\n");
+    scanf("%d", &ready);
+
+    while (ready == 1) {
+        roundCount = 1;
+            //assigning correct player hp class-wise
+            hpassigner(&playerOneHP, playerOneClass);
+            hpassigner(&playerTwoHP, playerTwoClass);
+
+        while (playerOneHP >= 1 && playerTwoHP >= 1) {
+            // here the game starts
+            printf("!ROUND %d!\n", roundCount);
+            
+            printf("%s's hp: %d\n", playerOneName, playerOneHP);
+            printf("%s's hp: %d\n", playerTwoName, playerTwoHP);
+            printf("%s, PRESS 1 TO ROLL THE DICE\n\n", playerOneName);
+            scanf("%d", &diceRoll);
+
+            if (diceRoll == 1) {
+                battle(&playerTwoHP, playerOneClass, playerTwoClass, playerOneName);
+
+                if (playerTwoHP <= 0) {
+                    break;
+                }
+                roundCount++;
+            }
+
+            // Player two's turn
+            printf("!ROUND %d!\n", roundCount);
+            printf("%s's hp: %d\n", playerOneName, playerOneHP);
+            printf("%s's hp: %d\n", playerTwoName, playerTwoHP);
+            printf("%s, PRESS 1 TO ROLL THE DICE\n\n", playerTwoName);
+
+            if (gameMode == 2) {
+                scanf("%d", &diceRoll);
+            } else {
+                diceRoll = 1;  // Automatic roll for player two in single-player mode
+            }
+
+            if (diceRoll == 1) {
+                battle(&playerOneHP, playerTwoClass, playerOneClass, playerTwoName);
+
+                if (playerOneHP <= 0) {
+                    break;
+                }
+                roundCount++;
+            }
+        }
+
+        if (playerOneHP <= 0) {
+            printf("%s WON BY ROUND %d!\n", playerTwoName, roundCount);
+        } else if (playerTwoHP <= 0) {
+            printf("%s WON BY ROUND %d!\n", playerOneName, roundCount);
+        }
+
+        printf("Are you willing to try again?\n");
+        printf("Press 1 to continue, press 2 to exit to the main menu\n");
+        scanf("%d", &ready);
+
+        // Adding a check for valid input in the main menu
+        while (ready != 1 && ready != 2) {
+            printf("Invalid input. Press 1 to continue, press 2 to exit to the main menu\n");
+            scanf("%d", &ready);
+        }
+    }
+
+    return 0;
+}
+// class select menu
+void klassmenu(char name[]) {
+    printf("%s, type in your class\n", name);
+    printf("> Press 1 for ninja\n");
+    printf("> Press 2 for mage\n");
+    printf("> Press 3 for barbarian\n");
+    printf("\n");
+    printf("> Press 4 for info\n");
+}
+// information about class stats that apears when player press 4 in class select menu
+void klassinfo() {
+    printf("ninja - (hp 7 - atk 3) 33 percent chance of double attack\n");
+    printf("mage - (hp 7 - atk 3) 25 percent chance of getting 2 hp back\n");
+    printf("barbarian - (hp 10 - atk 5) 15 percent chance of not landing a hit\n\n");
+}
+//battle system 
+void battle(int* playerhp, int playerklass, int enemyklass, char playername[]) {
+    int chance = rand() % 100;
+    int damage;
+
+// regeneration system for mage
+    switch (enemyklass) {
+        case 2:
+            if (chance <= 25) {
+                printf("Mage regenerated 2 hp\n");
+                *playerhp += 2;
+            }
+            break;
+    }
+
+    switch (playerklass) {
+        case 1: //battle system for ninja class
+            chance = rand() % 100;
+            if (chance <= 33) {
+                printf("Ninja double attack\n");
+                damage = rand() % 3 + 1;
+                printf("%s's attack: %d + %d\n\n", playername, damage, damage);
+                *playerhp -= damage * 2;
+            } else {
+                damage = rand() % 3 + 1;
+                printf("%s's attack: %d\n\n", playername, damage);
+                *playerhp -= damage;
+            }
+            break;
+
+        case 2: // battle system for mage class
+            damage = rand() % 3 + 1;
+            printf("%s's attack: %d\n\n", playername, damage);
+            *playerhp -= damage;
+            break;
+
+        case 3: // battle system for barbarian class
+            chance = rand() % 100;
+            if (chance <= 15) {
+                printf("%s missed the attack.\n", playername);
+            } else {
+                damage = rand() % 5 + 1;
+                printf("%s's attack: %d\n\n", playername, damage);
+                *playerhp -= damage;
+            }
+            break;
+    }
+}
+
+void generateRandomName(char randomname[]) {
+    char randomnames[6][10] = {
+        "bogdan", "geralt", "aiden", "nathan", "ezio", "hanzo"
+    };
+    int randomnamei = rand() % 6;
+    strcpy(randomname, randomnames[randomnamei]);
+}
+
+int generateRandomClass() {
+    return rand() % 3 + 1; 
+}
+// the last funciton assign the hp of the players by the class they choose
+void hpassigner(int* playerhp, int playerklass) {
+    switch (playerklass) {
+        case 1: // ninja
+            *playerhp = 7;
+            break;
+
+        case 2: // mage
+            *playerhp = 7;
+            break;
+
+        case 3: // barbarian
+            *playerhp = 10;
+            break;
+    }
+}
